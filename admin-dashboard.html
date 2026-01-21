@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - CampusResolve</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Import Map for Firebase -->
+    <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+      }
+    }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes countUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .animate-scale-in { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-count { animation: countUp 0.5s ease-out forwards; }
+
+        /* Status Badges - Utility classes applied directly in HTML */
+
+        /* Glass Overlay */
+        .glass-overlay {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex overflow-hidden">
+
+    <!-- 5.1 Sidebar (Amber/Dark Theme for Admin) -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 hidden md:flex flex-col z-20 text-white">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white text-sm mr-3 shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <span class="font-bold text-lg tracking-tight">CampusResolve</span>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-slate-800 text-amber-500 rounded-xl font-medium transition-colors border border-slate-700">
+                <i class="fa-solid fa-gauge-high w-5 text-center"></i>
+                Dashboard
+            </a>
+            
+            <div class="pt-6 pb-2 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Complaint Status</div>
+            
+            <button onclick="filterComplaints('Submitted')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-circle-exclamation w-5 text-center text-red-500"></i>
+                Unassigned
+            </button>
+            <button onclick="filterComplaints('In Progress')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-spinner w-5 text-center text-yellow-500"></i>
+                In Progress
+            </button>
+            <button onclick="filterComplaints('Resolved')" class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-check-double w-5 text-center text-green-500"></i>
+                Resolved
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center gap-3 px-4 py-3 mb-2">
+                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs">AD</div>
+                <div>
+                    <p class="text-sm font-bold text-white">Administrator</p>
+                    <p class="text-xs text-slate-500">System Control</p>
+                </div>
+            </div>
+            <button id="logout-btn" class="flex items-center gap-3 px-4 py-3 w-full text-red-400 hover:bg-slate-800 rounded-xl font-medium transition-colors border border-transparent hover:border-slate-700">
+                <i class="fa-solid fa-arrow-right-from-bracket w-5 text-center"></i>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <div class="md:hidden fixed top-0 w-full bg-slate-900 border-b border-slate-800 z-20 px-4 h-16 flex items-center justify-between text-white">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white text-sm">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <span class="font-bold text-lg">CampusResolve</span>
+        </div>
+        <button id="mobile-menu-btn" class="text-slate-400 hover:text-white">
+            <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden pt-16 md:pt-0 w-full bg-slate-50">
+        
+        <!-- 5.2 Top Bar -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shadow-sm">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800 animate-fade-in">Admin Dashboard</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
+                    <i class="fa-solid fa-shield-halved"></i> Admin Mode
+                </span>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+            
+            <!-- 5.3 System Stats Overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <!-- Total Load -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 0ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Load</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-total">0</div>
+                </div>
+                <!-- Action Required (Unassigned) -->
+                <div class="bg-white p-5 rounded-2xl border border-red-100 shadow-sm animate-count relative overflow-hidden" style="animation-delay: 50ms;">
+                    <div class="absolute right-0 top-0 w-16 h-16 bg-red-500 opacity-5 rounded-bl-full -mr-4 -mt-4"></div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-red-600 uppercase">Unassigned</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-unassigned">0</div>
+                </div>
+                <!-- In Progress -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 100ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                            <i class="fa-solid fa-bars-progress"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Active</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-progress">0</div>
+                </div>
+                <!-- Completed -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 150ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Completed</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-completed">0</div>
+                </div>
+            </div>
+
+            <!-- 5.4 Complaints List -->
+            <div class="mb-6 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <h3 class="text-lg font-bold text-slate-800">All Complaints</h3>
+                    <div class="hidden sm:flex gap-2">
+                        <button onclick="filterComplaints('All')" class="px-3 py-1 text-xs font-medium rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 transition" id="filter-all">All</button>
+                        <button onclick="filterComplaints('Submitted')" class="px-3 py-1 text-xs font-medium rounded-full bg-white border border-slate-200 text-slate-600 hover:border-red-300 transition" id="filter-submitted">Unassigned</button>
+                    </div>
+                </div>
+                <div class="text-sm text-slate-500" id="last-updated">Updating...</div>
+            </div>
+
+            <div id="complaints-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-10">
+                <!-- Loading Skeleton -->
+                <div class="bg-white rounded-xl h-40 animate-pulse border border-slate-200"></div>
+                <div class="bg-white rounded-xl h-40 animate-pulse border border-slate-200"></div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-2xl mb-4">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900">All Clear</h3>
+                <p class="text-slate-500">No complaints matching current filters.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 6. Assignment Modal (Critical UX) -->
+    <div id="assign-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-4">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 glass-overlay opacity-0 transition-opacity duration-300" id="modal-backdrop"></div>
+        
+        <!-- Modal Content -->
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 transform scale-95 opacity-0 transition-all duration-300 overflow-hidden" id="modal-content">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h3 class="font-bold text-slate-800">Assign Worker</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- Complaint Summary -->
+                <div class="mb-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p class="text-xs font-bold text-blue-600 uppercase tracking-wide mb-1">Complaint</p>
+                    <h4 class="font-bold text-slate-800 mb-1" id="modal-c-title">Title...</h4>
+                    <p class="text-sm text-slate-600 truncate" id="modal-c-category">Category • Location</p>
+                </div>
+
+                <div class="space-y-4">
+                    <label class="block text-sm font-medium text-slate-700">Select Maintenance Staff</label>
+                    <div class="relative">
+                        <select id="worker-select" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none transition-shadow">
+                            <option value="" disabled selected>Choose a worker...</option>
+                            <!-- Options injected via JS -->
+                        </select>
+                        <div class="absolute left-3 top-3.5 text-slate-400">
+                            <i class="fa-solid fa-helmet-safety"></i>
+                        </div>
+                        <div class="absolute right-3 top-3.5 text-slate-400 pointer-events-none">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                    
+                    <div id="worker-loading" class="hidden text-sm text-slate-500 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> Loading workers list...
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition">Cancel</button>
+                <button onclick="confirmAssignment()" id="confirm-assign-btn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none">
+                    Confirm Assignment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+            <i class="fa-solid fa-check-circle text-green-400"></i>
+            <span id="toast-msg">Action Successful</span>
+        </div>
+    </div>
+
+    <!-- JavaScript Module -->
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, collection, query, where, onSnapshot, doc, getDoc, updateDoc, arrayUnion, serverTimestamp, getDocs } from "firebase/firestore";
+        import { app, auth, db, logoutUser } from './firebase.js';
+
+        // -----------------------------------------------------------
+        // CONFIGURATION
+        // -----------------------------------------------------------
+        const ADMIN_UID = "lGAwpCUTO1fd13aeJef9oSbjDej2"; // Hardcoded Admin UID
+
+        let allComplaints = [];
+        let workersList = [];
+        let currentComplaintId = null;
+
+        // 1. Auth Guard & Initialization
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // STRICT SECURITY CHECK
+                // Only allow the user with the specific Admin UID to view this page.
+                if (user.uid !== ADMIN_UID) {
+                    // Unauthorized access attempt
+                    console.warn("Unauthorized access attempt by UID:", user.uid);
+                    alert("Access Denied: You are not authorized as an Administrator.");
+                    
+                    // Force sign out and redirect
+                    await signOut(auth);
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // If UID matches, proceed with loading dashboard
+                try {
+                    setupRealtimeListener();
+                    fetchWorkers(); 
+
+                } catch (e) {
+                    console.error("Admin Auth Error", e);
+                }
+            } else {
+                // No user logged in
+                window.location.href = 'login.html';
+            }
+        });
+
+        // 2. Real-time Listener (All Complaints)
+        function setupRealtimeListener() {
+            // Admin sees EVERYTHING
+            const q = query(collection(db, 'artifacts', 'campusresolve-e70f3', 'public', 'data', 'complaints'));
+
+            onSnapshot(q, (snapshot) => {
+                allComplaints = [];
+                snapshot.forEach((doc) => {
+                    allComplaints.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort: Unassigned (Submitted) first, then In Progress, then Priority
+                allComplaints.sort((a, b) => {
+                    const statusOrder = { 'Submitted': 0, 'Assigned': 1, 'In Progress': 2, 'Resolved': 3, 'Closed': 4 };
+                    if (statusOrder[a.status] !== statusOrder[b.status]) {
+                        return statusOrder[a.status] - statusOrder[b.status];
+                    }
+                    // Secondary sort by date desc
+                    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+                });
+
+                updateStats(allComplaints);
+                renderComplaints(allComplaints); // Default View
+
+                const now = new Date();
+                document.getElementById('last-updated').textContent = `Updated ${now.toLocaleTimeString()}`;
+            });
+        }
+
+        // 3. Fetch Workers List
+        async function fetchWorkers() {
+            try {
+                // Query users where role == 'worker'
+                const q = query(collection(db, 'users'), where('role', '==', 'worker'));
+                const snapshot = await getDocs(q);
+                workersList = [];
+                snapshot.forEach(doc => {
+                    workersList.push({ id: doc.id, ...doc.data() });
+                });
+                console.log("Workers loaded:", workersList.length);
+            } catch (e) {
+                console.error("Error loading workers", e);
+            }
+        }
+
+        // 4. Update Stats
+        function updateStats(data) {
+            const total = data.length;
+            const unassigned = data.filter(c => c.status === 'Submitted').length;
+            const active = data.filter(c => c.status === 'Assigned' || c.status === 'In Progress').length;
+            const completed = data.filter(c => c.status === 'Resolved' || c.status === 'Closed').length;
+
+            animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText), total, 500);
+            animateValue('stat-unassigned', parseInt(document.getElementById('stat-unassigned').innerText), unassigned, 500);
+            animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText), active, 500);
+            animateValue('stat-completed', parseInt(document.getElementById('stat-completed').innerText), completed, 500);
+        }
+
+        // 5. Render Logic
+        window.renderComplaints = function(data) {
+            const grid = document.getElementById('complaints-grid');
+            const empty = document.getElementById('empty-state');
+
+            if (data.length === 0) {
+                grid.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            grid.innerHTML = data.map(c => {
+                const isUnassigned = c.status === 'Submitted';
+                const statusClass = getStatusClass(c.status);
+                const priorityClass = getPriorityClass(c.priority);
+                
+                return `
+                <div class="bg-white p-5 rounded-xl border ${isUnassigned ? 'border-red-200 shadow-md' : 'border-slate-200'} shadow-sm hover:shadow-md transition-shadow animate-fade-in group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-lg ${isUnassigned ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-lg">
+                                ${getCategoryIcon(c.category)}
+                            </span>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm md:text-base line-clamp-1" title="${c.title}">${c.title}</h4>
+                                <div class="flex items-center gap-2 text-xs text-slate-500">
+                                    <span class="font-medium">${c.createdByName}</span>
+                                    <span>•</span>
+                                    <span>${c.role === 'staff' ? 'Staff' : 'Student'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${statusClass}">
+                            ${c.status}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Location</p>
+                            <p class="text-slate-700 font-medium truncate" title="${c.location}">${c.location}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Priority</p>
+                            <p class="${priorityClass} font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-flag text-[10px]"></i> ${c.priority}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-3 flex items-center justify-between">
+                        ${isUnassigned 
+                            ? `<button onclick="openAssignModal('${c.id}')" class="w-full py-2 rounded-lg bg-amber-50 text-amber-700 font-bold text-xs hover:bg-amber-100 transition flex items-center justify-center gap-2 border border-amber-200">
+                                <i class="fa-solid fa-user-plus"></i> Assign Worker
+                               </button>`
+                            : `<div class="flex items-center gap-2 text-xs text-slate-500 w-full">
+                                <span class="bg-slate-100 px-2 py-1 rounded flex items-center gap-1.5 flex-1">
+                                    <i class="fa-solid fa-helmet-safety text-slate-400"></i> 
+                                    ${c.assignedToName || 'Unknown Worker'}
+                                </span>
+                                ${c.status === 'Resolved' 
+                                    ? `<button onclick="closeComplaint('${c.id}')" class="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded font-bold hover:bg-green-100 transition">Close</button>` 
+                                    : ''}
+                               </div>`
+                        }
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // 6. Filter Logic
+        window.filterComplaints = function(status) {
+            const btns = document.querySelectorAll('button[id^="filter-"]');
+            btns.forEach(b => b.classList.remove('bg-slate-200', 'text-slate-700')); // Reset styles logic simplified for MVP
+
+            if (status === 'All') {
+                renderComplaints(allComplaints);
+            } else {
+                const filtered = allComplaints.filter(c => c.status === status);
+                renderComplaints(filtered);
+            }
+        }
+
+        // 7. Modal Logic
+        window.openAssignModal = function(id) {
+            currentComplaintId = id;
+            const complaint = allComplaints.find(c => c.id === id);
+            
+            document.getElementById('modal-c-title').textContent = complaint.title;
+            document.getElementById('modal-c-category').textContent = `${complaint.category} • ${complaint.location}`;
+            
+            // Populate Dropdown
+            const select = document.getElementById('worker-select');
+            select.innerHTML = '<option value="" disabled selected>Choose a worker...</option>';
+            
+            workersList.forEach(w => {
+                // Optional: Check if worker is "available" or show current task count
+                const option = document.createElement('option');
+                option.value = w.uid; // w.id is doc id, usually same as uid
+                option.text = `${w.fullName} (${w.workType || 'General'})`;
+                select.appendChild(option);
+            });
+
+            const modal = document.getElementById('assign-modal');
+            const backdrop = document.getElementById('modal-backdrop');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.remove('hidden');
+            // Transition
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                content.classList.remove('opacity-0', 'scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        window.closeModal = function() {
+            const modal = document.getElementById('assign-modal');
+            const backdrop = document.getElementById('modal-backdrop');
+            const content = document.getElementById('modal-content');
+
+            backdrop.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentComplaintId = null;
+                document.getElementById('worker-select').selectedIndex = 0;
+            }, 300);
+        }
+
+        // 8. Assignment Logic
+        window.confirmAssignment = async function() {
+            const workerId = document.getElementById('worker-select').value;
+            if (!workerId || !currentComplaintId) return;
+
+            const worker = workersList.find(w => w.uid === workerId);
+            const btn = document.getElementById('confirm-assign-btn');
+            
+            // Loading
+            const originalText = btn.innerText;
+            btn.innerText = "Assigning...";
+            btn.disabled = true;
+
+            try {
+                const complaintRef = doc(db, 'artifacts', 'campusresolve-e70f3', 'public', 'data', 'complaints', currentComplaintId);
+                
+                await updateDoc(complaintRef, {
+                    status: 'Assigned',
+                    assignedTo: workerId,
+                    assignedToName: worker.fullName,
+                    assignedAt: serverTimestamp(),
+                    updates: arrayUnion({
+                        status: 'Assigned',
+                        updatedBy: auth.currentUser.uid,
+                        updatedByName: 'Admin',
+                        timestamp: new Date(),
+                        note: `Assigned to ${worker.fullName}`
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+
+                showToast(`Assigned to ${worker.fullName}`);
+                closeModal();
+
+            } catch (error) {
+                console.error("Assignment Error", error);
+                showToast("Failed to assign", true);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 9. Close Complaint Logic
+        window.closeComplaint = async function(id) {
+            if(!confirm("Are you sure you want to close this complaint? This indicates the issue is fully resolved.")) return;
+
+            try {
+                const complaintRef = doc(db, 'artifacts', 'campusresolve-e70f3', 'public', 'data', 'complaints', id);
+                await updateDoc(complaintRef, {
+                    status: 'Closed',
+                    closedAt: serverTimestamp(),
+                    updates: arrayUnion({
+                        status: 'Closed',
+                        updatedBy: auth.currentUser.uid,
+                        updatedByName: 'Admin',
+                        timestamp: new Date(),
+                        note: 'Complaint closed by Admin'
+                    }),
+                    lastUpdated: serverTimestamp()
+                });
+                showToast("Complaint Closed");
+            } catch (error) {
+                console.error("Close Error", error);
+                showToast("Error closing complaint", true);
+            }
+        }
+
+        // Helpers
+        function getStatusClass(status) {
+            const map = {
+                'Submitted': 'status-submitted',
+                'Assigned': 'status-assigned',
+                'In Progress': 'status-progress',
+                'Resolved': 'status-resolved',
+                'Closed': 'status-closed'
+            };
+            return map[status] || 'bg-gray-100 text-gray-600 border-gray-200';
+        }
+
+        function getPriorityClass(p) {
+            if (p === 'Critical') return 'text-red-600';
+            if (p === 'High') return 'text-orange-600';
+            return 'text-slate-600';
+        }
+
+        function getCategoryIcon(cat) {
+            const map = {
+                'Electrical': '<i class="fa-solid fa-bolt"></i>',
+                'Plumbing': '<i class="fa-solid fa-faucet"></i>',
+                'Carpentry': '<i class="fa-solid fa-hammer"></i>',
+                'Cleaning': '<i class="fa-solid fa-broom"></i>',
+                'Civil': '<i class="fa-solid fa-building"></i>',
+                'IT': '<i class="fa-solid fa-network-wired"></i>'
+            };
+            return map[cat] || '<i class="fa-solid fa-circle-question"></i>';
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = document.getElementById(id);
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, stepTime || 10);
+        }
+
+        window.showToast = function(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = toast.querySelector('i');
+
+            msgEl.textContent = message;
+            if (isError) {
+                iconEl.className = 'fa-solid fa-circle-exclamation text-red-400';
+            } else {
+                iconEl.className = 'fa-solid fa-check-circle text-green-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        };
+        
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                window.location.href = 'index.html';
+            } catch(e) { console.error(e); }
+        });
+
+    </script>
+</body>
+</html>

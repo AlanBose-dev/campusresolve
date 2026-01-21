@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - CampusResolve</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Import Map for Firebase -->
+    <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+      }
+    }
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes countUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .animate-slide-in { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .animate-count { animation: countUp 0.5s ease-out forwards; }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 0.375rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        .status-submitted { background-color: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+        .status-assigned { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+        .status-progress { background-color: #fefce8; color: #b45309; border-color: #fef08a; }
+        .status-resolved { background-color: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .status-closed { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+
+        /* Glass Overlay */
+        .glass-overlay {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex overflow-hidden">
+
+    <!-- 5.1 Sidebar -->
+    <aside class="w-64 bg-white border-r border-slate-200 flex-shrink-0 hidden md:flex flex-col z-20">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm mr-3">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <span class="font-bold text-lg text-slate-800 tracking-tight">CampusResolve</span>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-medium transition-colors">
+                <i class="fa-solid fa-table-columns w-5 text-center"></i>
+                Dashboard
+            </a>
+            <button onclick="openNewComplaint()" class="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-circle-plus w-5 text-center text-indigo-500"></i>
+                New Complaint
+            </button>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-colors">
+                <i class="fa-solid fa-list-check w-5 text-center"></i>
+                My History
+            </a>
+            <div class="pt-4 mt-4 border-t border-slate-100">
+                <p class="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Account</p>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-colors">
+                    <i class="fa-solid fa-user-gear w-5 text-center"></i>
+                    Profile
+                </a>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <button id="logout-btn" class="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors">
+                <i class="fa-solid fa-arrow-right-from-bracket w-5 text-center"></i>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <div class="md:hidden fixed top-0 w-full bg-white border-b border-slate-200 z-20 px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <span class="font-bold text-lg text-slate-800">CampusResolve</span>
+        </div>
+        <button id="mobile-menu-btn" class="text-slate-500 hover:text-slate-800">
+            <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden pt-16 md:pt-0 w-full">
+        
+        <!-- 5.2 Top Bar -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800 animate-fade-in" id="welcome-msg">Welcome Back</h2>
+                <p class="text-xs text-slate-500 hidden sm:block">Track and manage your campus complaints</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="openNewComplaint()" class="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> New Complaint
+                </button>
+                <div class="w-10 h-10 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold shadow-sm" id="user-avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+            
+            <!-- 5.3 Stats Overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <!-- Total -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 0ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-total">0</div>
+                </div>
+                <!-- Pending -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 50ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                            <i class="fa-regular fa-clock"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Pending</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-pending">0</div>
+                </div>
+                <!-- In Progress -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 100ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Active</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-progress">0</div>
+                </div>
+                <!-- Resolved -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-count" style="animation-delay: 150ms;">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
+                            <i class="fa-solid fa-check-double"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Resolved</span>
+                    </div>
+                    <div class="text-2xl font-bold text-slate-900" id="stat-resolved">0</div>
+                </div>
+            </div>
+
+            <!-- 5.4 Complaints List -->
+            <div class="mb-6 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800">Your Complaints</h3>
+                <div class="text-sm text-slate-500" id="last-updated">Updated just now</div>
+            </div>
+
+            <div id="complaints-list" class="space-y-4 pb-10">
+                <!-- Loading Skeleton -->
+                <div class="animate-pulse space-y-4">
+                    <div class="h-32 bg-slate-200 rounded-xl"></div>
+                    <div class="h-32 bg-slate-200 rounded-xl"></div>
+                </div>
+            </div>
+
+            <!-- Empty State (Hidden by default) -->
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-3xl mb-4">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900">No complaints found</h3>
+                <p class="text-slate-500 max-w-xs mx-auto mb-6">You haven't raised any issues yet. Everything seems good!</p>
+                <button onclick="openNewComplaint()" class="text-indigo-600 font-medium hover:underline">
+                    Raise a new complaint
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 5.5 New Complaint Panel (Slide-over) -->
+    <div id="new-complaint-panel" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 glass-overlay transition-opacity opacity-0" id="panel-backdrop" onclick="closeNewComplaint()"></div>
+        
+        <!-- Panel -->
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col" id="panel-content">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                <h3 class="text-lg font-bold text-slate-800">New Complaint</h3>
+                <button onclick="closeNewComplaint()" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <form id="complaint-form" class="space-y-6">
+                    
+                    <!-- Title -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Issue Title</label>
+                        <input type="text" id="c-title" required placeholder="e.g. Fan not working in Room 302"
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400">
+                    </div>
+
+                    <!-- Category & Priority -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                            <select id="c-category" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                <option value="" disabled selected>Select...</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Plumbing">Plumbing</option>
+                                <option value="Carpentry">Carpentry</option>
+                                <option value="Cleaning">Cleaning</option>
+                                <option value="Civil">Civil/Infrastructure</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+                            <select id="c-priority" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Location / Room No</label>
+                        <input type="text" id="c-location" required placeholder="e.g. Boys Hostel, Block A, Room 101"
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                        <textarea id="c-desc" rows="4" required placeholder="Describe the issue in detail..."
+                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"></textarea>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                        <p class="text-xs text-blue-700">Once submitted, you cannot edit the complaint details. Admins will review and assign a worker shortly.</p>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-6 border-t border-slate-100 bg-slate-50">
+                <button form="complaint-form" type="submit" id="submit-btn" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <span>Submit Complaint</span>
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-800 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+            <i class="fa-solid fa-check-circle text-green-400"></i>
+            <span id="toast-msg">Action Successful</span>
+        </div>
+    </div>
+
+    <!-- JavaScript Module -->
+    <script type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, doc, getDoc } from "firebase/firestore";
+        import { app, auth, db, logoutUser } from './firebase.js';
+
+        let currentUser = null;
+        let unsubscribeComplaints = null;
+
+        // 1. Auth Guard & Initialization
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                
+                // Get User Profile to confirm Role and get Name
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        
+                        // Role Guard
+                        if (userData.role !== 'student') {
+                            alert("Access Denied: Students Only");
+                            window.location.href = 'index.html';
+                            return;
+                        }
+
+                        // Update UI
+                        document.getElementById('welcome-msg').textContent = `Welcome, ${userData.fullName.split(' ')[0]}`;
+                        const initials = userData.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                        document.getElementById('user-avatar').textContent = initials;
+
+                        // Start Listening to Data
+                        setupRealtimeListener(user.uid);
+                    }
+                } catch (e) {
+                    console.error("Profile Fetch Error", e);
+                }
+
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        // 2. Real-time Complaints Listener
+        function setupRealtimeListener(uid) {
+            // Query: Get complaints created by this user
+            // Note: Simple query to comply with Rule 2 (No composite indexes)
+            // Sorting will be done in JS
+            const q = query(
+                collection(db, 'artifacts', 'campusresolve-e70f3', 'public', 'data', 'complaints'),
+                where('createdBy', '==', uid)
+            );
+
+            const listContainer = document.getElementById('complaints-list');
+            const emptyState = document.getElementById('empty-state');
+
+            unsubscribeComplaints = onSnapshot(q, (snapshot) => {
+                const complaints = [];
+                snapshot.forEach((doc) => {
+                    complaints.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sort by date desc (JS Sort)
+                complaints.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                // Update Stats
+                updateStats(complaints);
+
+                // Render List
+                if (complaints.length === 0) {
+                    listContainer.innerHTML = '';
+                    listContainer.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    emptyState.classList.add('flex');
+                } else {
+                    emptyState.classList.add('hidden');
+                    emptyState.classList.remove('flex');
+                    listContainer.classList.remove('hidden');
+                    renderComplaints(complaints);
+                }
+
+                // Update Timestamp
+                const now = new Date();
+                document.getElementById('last-updated').textContent = `Updated ${now.toLocaleTimeString()}`;
+
+            }, (error) => {
+                console.error("Error fetching complaints:", error);
+                showToast("Error loading data", true);
+            });
+        }
+
+        // 3. Stats Calculation
+        function updateStats(complaints) {
+            const total = complaints.length;
+            const pending = complaints.filter(c => c.status === 'Submitted' || c.status === 'Assigned').length;
+            const progress = complaints.filter(c => c.status === 'In Progress').length;
+            const resolved = complaints.filter(c => c.status === 'Resolved' || c.status === 'Closed').length;
+
+            animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText), total, 500);
+            animateValue('stat-pending', parseInt(document.getElementById('stat-pending').innerText), pending, 500);
+            animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText), progress, 500);
+            animateValue('stat-resolved', parseInt(document.getElementById('stat-resolved').innerText), resolved, 500);
+        }
+
+        // 4. Render Logic
+        function renderComplaints(complaints) {
+            const container = document.getElementById('complaints-list');
+            container.innerHTML = complaints.map(c => createComplaintCard(c)).join('');
+        }
+
+        function createComplaintCard(c) {
+            const date = c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString() : 'Just now';
+            const statusClass = getStatusClass(c.status);
+            const icon = getCategoryIcon(c.category);
+
+            return `
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group animate-fade-in">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                            ${icon}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm md:text-base">${c.title}</h4>
+                            <div class="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                                <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">${c.category}</span>
+                                <span>•</span>
+                                <span><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>${c.location}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="status-badge ${statusClass}">
+                        ${c.status}
+                    </span>
+                </div>
+                
+                <p class="text-sm text-slate-600 mb-4 line-clamp-2 pl-[3.25rem]">${c.description}</p>
+                
+                <div class="flex items-center justify-between pl-[3.25rem] pt-3 border-t border-slate-50 text-xs">
+                    <div class="flex items-center gap-4 text-slate-500">
+                        <span title="Priority" class="${getPriorityColor(c.priority)} font-semibold">
+                            <i class="fa-solid fa-flag mr-1"></i>${c.priority}
+                        </span>
+                        <span><i class="fa-regular fa-calendar mr-1"></i>${date}</span>
+                    </div>
+                    ${c.assignedToName ? 
+                        `<div class="flex items-center gap-1.5 text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded">
+                            <i class="fa-solid fa-helmet-safety"></i>
+                            <span>${c.assignedToName}</span>
+                        </div>` 
+                        : '<span class="text-slate-400 italic">Unassigned</span>'
+                    }
+                </div>
+            </div>
+            `;
+        }
+
+        // 5. Helpers
+        function getStatusClass(status) {
+            const map = {
+                'Submitted': 'status-submitted',
+                'Assigned': 'status-assigned',
+                'In Progress': 'status-progress',
+                'Resolved': 'status-resolved',
+                'Closed': 'status-closed'
+            };
+            return map[status] || 'status-submitted';
+        }
+
+        function getPriorityColor(priority) {
+            if (priority === 'High' || priority === 'Critical') return 'text-red-600';
+            if (priority === 'Medium') return 'text-orange-600';
+            return 'text-slate-500';
+        }
+
+        function getCategoryIcon(cat) {
+            const map = {
+                'Electrical': '<i class="fa-solid fa-bolt text-yellow-500"></i>',
+                'Plumbing': '<i class="fa-solid fa-faucet text-blue-500"></i>',
+                'Carpentry': '<i class="fa-solid fa-hammer text-amber-600"></i>',
+                'Cleaning': '<i class="fa-solid fa-broom text-teal-500"></i>',
+                'Civil': '<i class="fa-solid fa-building text-slate-600"></i>'
+            };
+            return map[cat] || '<i class="fa-solid fa-circle-question"></i>';
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = document.getElementById(id);
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, stepTime || 10); // Prevent 0 or infinity
+        }
+
+        // 6. Form Submission
+        document.getElementById('complaint-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            
+            // Loading State
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
+            btn.disabled = true;
+
+            try {
+                // Collect Data
+                const complaintData = {
+                    title: document.getElementById('c-title').value,
+                    category: document.getElementById('c-category').value,
+                    priority: document.getElementById('c-priority').value,
+                    location: document.getElementById('c-location').value,
+                    description: document.getElementById('c-desc').value,
+                    createdBy: currentUser.uid,
+                    createdByName: currentUser.displayName || 'Student',
+                    status: 'Submitted',
+                    createdAt: serverTimestamp(),
+                    updates: [] // History array
+                };
+
+                // Add to Firestore
+                await addDoc(collection(db, 'artifacts', 'campusresolve-e70f3', 'public', 'data', 'complaints'), complaintData);
+
+                // Success
+                showToast("Complaint submitted successfully!");
+                closeNewComplaint();
+                e.target.reset();
+
+            } catch (error) {
+                console.error("Submission Error", error);
+                showToast("Failed to submit. Try again.", true);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // 7. Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                window.location.href = 'index.html';
+            } catch(e) {
+                console.error(e);
+            }
+        });
+
+        // 8. Global UI Functions (Attached to Window)
+        window.openNewComplaint = function() {
+            const panel = document.getElementById('new-complaint-panel');
+            const backdrop = document.getElementById('panel-backdrop');
+            const content = document.getElementById('panel-content');
+            
+            panel.classList.remove('hidden');
+            // Small delay for transition
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                content.classList.remove('translate-x-full');
+            }, 10);
+        };
+
+        window.closeNewComplaint = function() {
+            const panel = document.getElementById('new-complaint-panel');
+            const backdrop = document.getElementById('panel-backdrop');
+            const content = document.getElementById('panel-content');
+
+            backdrop.classList.add('opacity-0');
+            content.classList.add('translate-x-full');
+            
+            setTimeout(() => {
+                panel.classList.add('hidden');
+            }, 300);
+        };
+
+        window.showToast = function(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = toast.querySelector('i');
+
+            msgEl.textContent = message;
+            if (isError) {
+                toast.classList.remove('bg-slate-800');
+                toast.classList.add('bg-red-600');
+                iconEl.className = 'fa-solid fa-circle-exclamation text-white';
+            } else {
+                toast.classList.add('bg-slate-800');
+                toast.classList.remove('bg-red-600');
+                iconEl.className = 'fa-solid fa-check-circle text-green-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        };
+
+    </script>
+</body>
+</html>

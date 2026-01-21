@@ -1,0 +1,21 @@
+/college-complaint-system
+│
+├── index.html                  # Landing page (features, how it works)
+│
+├── role-select.html            # Select role (Student / Staff / Worker / Admin)
+│
+├── login.html                  # Login (role-based)
+│
+├── register.html               # Registration (Student / Staff / Worker)
+│
+├── student-dashboard.html      # Student complaints dashboard
+│
+├── staff-dashboard.html        # Staff complaints dashboard
+│
+├── worker-dashboard.html       # Worker assigned tasks dashboard
+│
+├── admin-dashboard.html        # Admin control & assignment dashboard
+│
+├── firebase.js                 # Firebase config & initialization (ONLY shared file)
+│
+└── README.md                   # Project explanation & usage
