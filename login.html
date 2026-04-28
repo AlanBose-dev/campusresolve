@@ -333,6 +333,7 @@
                 // but for security we should verify they are actually an admin.
 
                 if (currentRole === 'admin') {
+                    const ADMIN_EMAIL = "admin@gmail.com";
 
                     if (user.uid !== ADMIN_UID) {
                         throw new Error("Unauthorized admin access.");
